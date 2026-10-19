@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+# 前端 Vite 环境变量不含密钥（只有 VITE_ 前缀的公开变量），需要进仓库
+!.env.development
+!.env.production
+server/uploads/*
+!server/uploads/.gitkeep
+.DS_Store
+.idea/
+.vscode/
