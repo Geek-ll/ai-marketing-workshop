@@ -1,24 +1,24 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { getHealth } from './api/health'
+import { ref } from 'vue'
+import UploadPanel from './components/UploadPanel.vue'
+import ProductList from './components/ProductList.vue'
 
-const status = ref('检测中...')
-
-onMounted(async () => {
-  try {
-    const res = await getHealth()
-    console.log('[health] 后端响应：', res)
-    status.value = '后端连接成功：' + res.data.time
-  } catch (e) {
-    console.error('[health] 请求失败：', e.message)
-    status.value = '后端连接失败：' + e.message
-  }
-})
+const listRef = ref()
 </script>
 
 <template>
-  <el-card style="max-width: 560px; margin: 60px auto">
-    <h2>AI 出海营销工坊</h2>
-    <el-tag :type="status.includes('成功') ? 'success' : 'info'">{{ status }}</el-tag>
-  </el-card>
+  <el-container style="max-width: 1200px; margin: 0 auto; padding: 24px">
+    <el-header height="auto" style="padding: 0 0 16px">
+      <h2 style="margin: 0">素材管理中心 · 商品图片上传</h2>
+      <p style="color: #909399; margin: 8px 0 0">左侧上传商品图片与信息，右侧以瀑布流展示已入库的商品素材</p>
+    </el-header>
+    <el-container>
+      <el-aside width="380px" style="padding-right: 20px">
+        <UploadPanel @created="listRef.reload()" />
+      </el-aside>
+      <el-main style="padding: 0">
+        <ProductList ref="listRef" />
+      </el-main>
+    </el-container>
+  </el-container>
 </template>
