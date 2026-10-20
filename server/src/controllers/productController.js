@@ -1,4 +1,5 @@
 import Product from '../models/Product.js'
+import { analyzeProduct } from '../services/visionService.js'
 
 export async function createProduct(req, res, next) {
   try {
@@ -33,6 +34,22 @@ export async function deleteProduct(req, res, next) {
     const product = await Product.findByIdAndDelete(req.params.id)
     if (!product) return res.status(404).json({ code: 4004, message: '商品不存在' })
     res.json({ code: 0, message: 'ok', data: product })
+  } catch (e) {
+    next(e)
+  }
+}
+
+// AI 一键识别：调用视觉大模型分析商品图，结果写回 aiAnalysis
+export async function analyze(req, res, next) {
+  try {
+    const product = await Product.findById(req.params.id).catch(() => null)
+    if (!product) return res.status(404).json({ code: 4004, message: '商品不存在' })
+
+    const result = await analyzeProduct(product)
+    product.aiAnalysis = { ...result, analyzedAt: new Date() }
+    await product.save()
+
+    res.json({ code: 0, message: 'ok', data: product.aiAnalysis })
   } catch (e) {
     next(e)
   }

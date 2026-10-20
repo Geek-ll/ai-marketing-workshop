@@ -1,11 +1,27 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useProductStore } from '../stores/product'
+import { analyzeProduct } from '../api/product'
 
 const store = useProductStore()
 const base = import.meta.env.VITE_API_BASE ?? ''
 const imgUrl = (p) => base + p
+
+const analyzing = reactive({}) // 每个商品各自的 loading 状态
+
+async function runAnalyze(p) {
+  analyzing[p._id] = true
+  try {
+    const res = await analyzeProduct(p._id)
+    p.aiAnalysis = res.data // 直接更新当前卡片，无需整页刷新
+    ElMessage.success('识别完成')
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    analyzing[p._id] = false
+  }
+}
 
 async function onDelete(p) {
   try {
@@ -40,6 +56,24 @@ onMounted(() => store.load())
           <el-tag size="small" v-if="p.category">{{ p.category }}</el-tag>
           <el-tag size="small" type="success" v-if="p.audience" style="margin-left: 6px">{{ p.audience }}</el-tag>
           <div class="time">{{ new Date(p.createdAt).toLocaleString() }}</div>
+          <el-button
+            size="small"
+            type="primary"
+            plain
+            :loading="analyzing[p._id]"
+            style="margin-top: 10px"
+            @click="runAnalyze(p)"
+          >
+            {{ p.aiAnalysis?.core_selling_points?.length ? '重新识别' : 'AI 一键识别' }}
+          </el-button>
+          <div v-if="p.aiAnalysis?.core_selling_points?.length" class="ai-result">
+            <div class="ai-title">外观特征</div>
+            <el-tag v-for="t in p.aiAnalysis.visual_elements" :key="t" class="tag">{{ t }}</el-tag>
+            <div class="ai-title">核心卖点</div>
+            <el-tag v-for="t in p.aiAnalysis.core_selling_points" :key="t" type="success" class="tag">{{ t }}</el-tag>
+            <div class="ai-title">场景建议</div>
+            <el-tag v-for="t in p.aiAnalysis.scene_suggestions" :key="t" type="warning" class="tag">{{ t }}</el-tag>
+          </div>
         </div>
       </el-card>
     </div>
@@ -84,6 +118,20 @@ onMounted(() => store.load())
   margin-top: 8px;
   color: #999;
   font-size: 12px;
+}
+.ai-result {
+  margin-top: 10px;
+}
+.ai-title {
+  margin: 8px 0 4px;
+  font-size: 12px;
+  color: #666;
+}
+.tag {
+  margin: 0 6px 6px 0;
+  height: auto;
+  white-space: normal;
+  padding: 4px 8px;
 }
 @media (max-width: 900px) {
   .waterfall {
