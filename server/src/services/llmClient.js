@@ -48,3 +48,65 @@ export async function chatCompletion({
     purpose,
   }
 }
+
+/**
+ * 流式对话（异步生成器）。逐步 yield：
+ *   { type: 'delta', text }     增量文本
+ *   { type: 'usage', usage }    结束时的 Token 用量
+ * signal 用于用户点“停止生成”时同步中断上游请求，避免白跑额度。
+ */
+export async function* streamChat({ model, messages, temperature = 0.8, purpose = 'chat', signal }) {
+  const key = process.env.DASHSCOPE_API_KEY
+  if (!key) throw new LLMError('服务器未配置 DASHSCOPE_API_KEY', 500)
+
+  const res = await fetch(`${BASE}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature,
+      stream: true,
+      stream_options: { include_usage: true }, // 让最后一个数据块带上 usage
+    }),
+    signal,
+  }).catch((e) => {
+    throw new LLMError('大模型请求失败：' + e.message)
+  })
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new LLMError(`大模型返回 ${res.status}：${data.error?.message || '未知错误'}`)
+  }
+
+  const decoder = new TextDecoder()
+  let buf = ''
+  for await (const chunk of res.body) {
+    buf += decoder.decode(chunk, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop() // 最后一行可能不完整，留到下一轮
+    for (const line of lines) {
+      const t = line.trim()
+      if (!t.startsWith('data:')) continue
+      const payload = t.slice(5).trim()
+      if (payload === '[DONE]') return
+      let json
+      try {
+        json = JSON.parse(payload)
+      } catch {
+        continue
+      }
+      const text = json.choices?.[0]?.delta?.content
+      if (text) yield { type: 'delta', text }
+      if (json.usage) {
+        yield {
+          type: 'usage',
+          usage: {
+            promptTokens: json.usage.prompt_tokens ?? 0,
+            completionTokens: json.usage.completion_tokens ?? 0,
+          },
+        }
+      }
+    }
+  }
+}
