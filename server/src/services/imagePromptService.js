@@ -53,7 +53,7 @@ Scene idea (Chinese): ${scene}`
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,
-      purpose: 'prompt-fix',
+      purpose: 'prompt',
     })
     prompt = fixed.trim().replace(/^["']|["']$/g, '')
   }
