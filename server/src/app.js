@@ -7,6 +7,7 @@ import { UPLOAD_DIR } from './middlewares/upload.js'
 // 注册数据模型：连接建立后 Mongoose 会自动创建对应集合（数据库初始化）
 import './models/Product.js'
 import './models/MarketingAsset.js'
+import './models/TokenLog.js'
 
 const app = express()
 

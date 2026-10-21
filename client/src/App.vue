@@ -4,6 +4,7 @@ import UploadPanel from './components/UploadPanel.vue'
 import ProductList from './components/ProductList.vue'
 import CopyStudio from './views/CopyStudio.vue'
 import SceneStudio from './views/SceneStudio.vue'
+import Dashboard from './views/Dashboard.vue'
 
 const tab = ref('assets')
 const listRef = ref()
@@ -31,6 +32,9 @@ const listRef = ref()
       </el-tab-pane>
       <el-tab-pane label="场景生图" name="scene" lazy>
         <SceneStudio :active="tab === 'scene'" />
+      </el-tab-pane>
+      <el-tab-pane label="运营看板" name="stats" lazy>
+        <Dashboard />
       </el-tab-pane>
     </el-tabs>
   </div>

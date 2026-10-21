@@ -1,3 +1,5 @@
+import { recordUsage } from './usageLogger.js'
+
 const BASE = process.env.LLM_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 
 export class LLMError extends Error {
@@ -12,13 +14,7 @@ export class LLMError extends Error {
  * 非流式对话。返回 { content, usage, model }
  * purpose 用于标记调用用途（vision / copy / prompt），作业 8 用来做统计
  */
-export async function chatCompletion({
-  model,
-  messages,
-  temperature = 0.7,
-  purpose = 'chat',
-  timeoutMs = 90000,
-}) {
+async function rawChatCompletion({ model, messages, temperature = 0.7, purpose: optsPurpose, timeoutMs = 90000 }) {
   const key = process.env.DASHSCOPE_API_KEY
   // 错误信息里只说明“未配置”，绝不拼接 Key 本身
   if (!key) throw new LLMError('服务器未配置 DASHSCOPE_API_KEY', 500)
@@ -45,7 +41,35 @@ export async function chatCompletion({
       completionTokens: data.usage?.completion_tokens ?? 0,
     },
     model: data.model || model,
-    purpose,
+    purpose: optsPurpose,
+  }
+}
+
+/**
+ * 统一出口：所有非流式调用都经过这里自动埋点，
+ * 业务代码新增任何 AI 功能都不用再关心统计。
+ */
+export async function chatCompletion(opts) {
+  const started = Date.now()
+  try {
+    const result = await rawChatCompletion(opts)
+    recordUsage({
+      purpose: opts.purpose,
+      model: result.model,
+      ...result.usage,
+      success: true,
+      latencyMs: Date.now() - started,
+    })
+    return result
+  } catch (e) {
+    recordUsage({
+      purpose: opts.purpose,
+      model: opts.model,
+      success: false,
+      latencyMs: Date.now() - started,
+      errorMessage: e.message,
+    })
+    throw e
   }
 }
 
@@ -55,7 +79,7 @@ export async function chatCompletion({
  *   { type: 'usage', usage }    结束时的 Token 用量
  * signal 用于用户点“停止生成”时同步中断上游请求，避免白跑额度。
  */
-export async function* streamChat({ model, messages, temperature = 0.8, purpose = 'chat', signal }) {
+async function* rawStreamChat({ model, messages, temperature = 0.8, signal }) {
   const key = process.env.DASHSCOPE_API_KEY
   if (!key) throw new LLMError('服务器未配置 DASHSCOPE_API_KEY', 500)
 
@@ -108,5 +132,38 @@ export async function* streamChat({ model, messages, temperature = 0.8, purpose 
         }
       }
     }
+  }
+}
+
+/**
+ * 流式调用的统一出口包装。
+ * 用户主动“停止生成”会抛 AbortError，这属于正常操作，不计为失败调用。
+ */
+export async function* streamChat(opts) {
+  const started = Date.now()
+  let usage = null
+  let ok = true
+  let errMsg
+  try {
+    for await (const ev of rawStreamChat(opts)) {
+      if (ev.type === 'usage') usage = ev.usage
+      yield ev
+    }
+  } catch (e) {
+    if (e.name !== 'AbortError') {
+      ok = false
+      errMsg = e.message
+    }
+    throw e
+  } finally {
+    recordUsage({
+      purpose: opts.purpose,
+      model: opts.model,
+      promptTokens: usage?.promptTokens ?? 0,
+      completionTokens: usage?.completionTokens ?? 0,
+      success: ok,
+      latencyMs: Date.now() - started,
+      errorMessage: errMsg,
+    })
   }
 }

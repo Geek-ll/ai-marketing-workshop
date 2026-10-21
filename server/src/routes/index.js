@@ -5,6 +5,7 @@ import { createProduct, listProducts, deleteProduct, analyze } from '../controll
 import { generate, stream } from '../controllers/copyController.js'
 import { generate as generateImage, taskStatus } from '../controllers/imageController.js'
 import { listAssets, removeAsset } from '../controllers/assetController.js'
+import { overview } from '../controllers/statsController.js'
 import { inputGuard } from '../middlewares/compliance.js'
 
 const router = Router()
@@ -19,6 +20,7 @@ router.post('/copy/stream', inputGuard(['extra']), stream)
 router.get('/assets', listAssets)
 router.post('/images/generate', generateImage)
 router.get('/images/tasks/:assetId', taskStatus)
+router.get('/stats/overview', overview)
 router.delete('/assets/:id', removeAsset)
 router.delete('/products/:id', deleteProduct)
 

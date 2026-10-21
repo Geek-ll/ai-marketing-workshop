@@ -3,6 +3,7 @@ import { onMounted, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useProductStore } from '../stores/product'
 import { analyzeProduct } from '../api/product'
+import { exportPack } from '../utils/exportPack'
 
 const store = useProductStore()
 const base = import.meta.env.VITE_API_BASE ?? ''
@@ -20,6 +21,20 @@ async function runAnalyze(p) {
     ElMessage.error(e.message)
   } finally {
     analyzing[p._id] = false
+  }
+}
+
+const exporting = reactive({})
+
+async function doExport(p) {
+  exporting[p._id] = true
+  try {
+    await exportPack(p)
+    ElMessage.success('已开始下载')
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    exporting[p._id] = false
   }
 }
 
@@ -65,6 +80,9 @@ onMounted(() => store.load())
             @click="runAnalyze(p)"
           >
             {{ p.aiAnalysis?.core_selling_points?.length ? '重新识别' : 'AI 一键识别' }}
+          </el-button>
+          <el-button size="small" plain :loading="exporting[p._id]" style="margin-top: 10px" @click="doExport(p)">
+            导出营销包
           </el-button>
           <div v-if="p.aiAnalysis?.core_selling_points?.length" class="ai-result">
             <div class="ai-title">外观特征</div>
