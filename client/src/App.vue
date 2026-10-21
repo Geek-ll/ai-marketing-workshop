@@ -34,7 +34,7 @@ const listRef = ref()
         <SceneStudio :active="tab === 'scene'" />
       </el-tab-pane>
       <el-tab-pane label="运营看板" name="stats" lazy>
-        <Dashboard />
+        <Dashboard :active="tab === 'stats'" />
       </el-tab-pane>
     </el-tabs>
   </div>

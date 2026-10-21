@@ -1,9 +1,10 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
 import { getOverview } from '../api/stats'
 
+const props = defineProps({ active: { type: Boolean, default: true } })
 const data = ref(null)
 const days = ref(7)
 const lineEl = ref()
@@ -84,6 +85,13 @@ onMounted(() => {
   load()
   window.addEventListener('resize', onResize)
 })
+// 从别的标签页切回看板时容器尺寸可能变化，重新 resize 避免图表变形
+watch(
+  () => props.active,
+  (v) => {
+    if (v) nextTick(() => setTimeout(onResize, 50))
+  }
+)
 onBeforeUnmount(() => {
   window.removeEventListener('resize', onResize)
   line?.dispose()
