@@ -1,0 +1,30 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  backend:
+    build: ./server
+    restart: unless-stopped
+    env_file: ./server/.env            # 注入 DASHSCOPE_API_KEY 等密钥
+    environment:
+      PORT: 3000
+      MONGO_URI: mongodb://mongo:27017/aimarketing    # 容器之间用服务名访问，不是 localhost
+    volumes:
+      - uploads-data:/app/uploads
+    depends_on:
+      - mongo
+
+  frontend:
+    build: ./client
+    restart: unless-stopped
+    ports:
+      - "8080:80"                      # 本机 8080 → 容器内 Nginx 的 80
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
+  uploads-data:
