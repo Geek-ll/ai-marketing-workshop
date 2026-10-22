@@ -168,3 +168,19 @@ onBeforeUnmount(stopPolling)
     </el-space>
   </el-card>
 </template>
+
+<style scoped>
+/* 场景建议文案较长，允许换行，避免单选文字被裁切 */
+:deep(.el-radio) {
+  height: auto;
+  margin-bottom: 8px;
+  align-items: flex-start;
+}
+:deep(.el-radio__label) {
+  white-space: normal;
+  line-height: 1.5;
+}
+:deep(.el-radio__input) {
+  margin-top: 2px;
+}
+</style>
